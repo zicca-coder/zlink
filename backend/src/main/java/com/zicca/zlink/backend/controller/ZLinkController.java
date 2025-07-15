@@ -1,0 +1,43 @@
+package com.zicca.zlink.backend.controller;
+
+import com.zicca.zlink.backend.dto.req.ZLinkCreateReqDTO;
+import com.zicca.zlink.backend.dto.resp.ZLinkCreateRespDTO;
+import com.zicca.zlink.backend.service.ZLinkService;
+import com.zicca.zlink.framework.result.Result;
+import com.zicca.zlink.framework.web.Results;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(description = "短链接管理", name = "短链接接口管理")
+@RestController
+@RequestMapping("/api/short-link/v1")
+@RequiredArgsConstructor
+public class ZLinkController {
+
+    private final ZLinkService zLinkService;
+
+
+    @PostMapping("/create")
+    @Operation(summary = "创建短链接", description = "创建短链接")
+    @ApiResponse(
+            responseCode = "200",
+            description = "创建成功",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ZLinkCreateRespDTO.class)
+            )
+    )
+    public Result<ZLinkCreateRespDTO> create(@RequestBody ZLinkCreateReqDTO reqDTO) {
+        return Results.success(zLinkService.createZLink(reqDTO));
+    }
+
+
+}
