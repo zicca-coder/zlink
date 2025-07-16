@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.StrBuilder;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.zicca.zlink.backend.cache.CacheService;
 import com.zicca.zlink.backend.common.enums.CreateTypeEnum;
 import com.zicca.zlink.backend.common.enums.ValidDateTypeEnum;
 import com.zicca.zlink.backend.dao.entity.ZLink;
@@ -17,6 +18,7 @@ import com.zicca.zlink.backend.dto.resp.ZLinkCreateRespDTO;
 import com.zicca.zlink.backend.dto.resp.ZLinkGroupCountQueryRespDTO;
 import com.zicca.zlink.backend.service.ZLinkService;
 import com.zicca.zlink.backend.toolkit.HashUtil;
+import com.zicca.zlink.backend.toolkit.LinkUtil;
 import com.zicca.zlink.framework.execption.ServiceException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -28,6 +30,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -39,9 +42,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements ZLinkService {
 
+    private final CacheService cacheService;
+
+
     @Value("${zlink.domain.default}")
     private String defaultDomain;
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public ZLinkCreateRespDTO createZLink(ZLinkCreateReqDTO requestParam) {
         String suffix = generateSuffix();
@@ -62,6 +69,10 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
         if (!saved) {
             throw new ServiceException("新增短链接失败");
         }
+        // 加入缓存 默认刚创建的短链接是即将被访问的
+        cacheService.putToCache(shortUrl, zLink.getOriginUrl(), LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()));
+        // 加入布隆过滤器
+        cacheService.addToBloomFilter(shortUrl);
         return BeanUtil.copyProperties(zLink, ZLinkCreateRespDTO.class);
     }
 

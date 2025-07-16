@@ -7,6 +7,7 @@ import com.zicca.zlink.backend.common.enums.EnableStatusEnum;
 import com.zicca.zlink.backend.common.enums.ValidDateTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
@@ -14,6 +15,7 @@ import java.util.Date;
 /**
  * ZLink实体类
  */
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -60,7 +62,7 @@ public class ZLink extends BaseDO {
      * 点击数
      */
     @TableField(value = "click_num", fill = FieldFill.INSERT)
-    private Integer clickNum;
+    private Long clickNum;
 
     /**
      * 启用状态：0-启用，1-禁用

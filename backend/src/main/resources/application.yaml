@@ -42,8 +42,10 @@ knife4j:
 zlink:
   domain:
     default: zlink.ink:${server.port}
+  redis:
+    fetch-size: 5000 # Redis批量获取数量
   bloom:
-    exepctedInsertions: 10000000 # 预期1000万短链
+    expectedInsertions: 10000000 # 预期1000万短链
     falseProbability: 0.01 # 1%误判率
     filterName: zlink_bloom_filter
     batchSize: 1000 # 每次处理数量
