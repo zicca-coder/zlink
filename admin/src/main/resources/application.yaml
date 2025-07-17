@@ -1,0 +1,35 @@
+server:
+  port: 9020
+spring:
+  application:
+    name: admin
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.17.128:3306/z-link?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+  data:
+    redis:
+      host: 192.168.17.128
+      port: 6379
+      timeout: 3000
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 117.72.198.204:8848
+        namespace: bdb6c233-522a-4b8f-94ae-ee1f4984deda
+        register-enabled: true
+
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+    enable-swagger-models: true
+    enable-document-manage: true
+    swagger-model-name: 实体类列表
+  basic:
+    enable: false
