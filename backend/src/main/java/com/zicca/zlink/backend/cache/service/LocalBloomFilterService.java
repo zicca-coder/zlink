@@ -1,9 +1,10 @@
-package com.zicca.zlink.backend.cache;
+package com.zicca.zlink.backend.cache.service;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import com.zicca.zlink.backend.common.constant.RedisKeyConstants;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j(topic = "LocalBloomFilterService")
 @Service
 @RequiredArgsConstructor
-public class LocalBloomFilterService implements BloomFilterService{
+public class LocalBloomFilterService implements BloomFilterService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -41,6 +41,7 @@ public class LocalBloomFilterService implements BloomFilterService{
 
 
     @Override
+    @PostConstruct
     public void init() {
         localBloomFilter = BloomFilter.create(
                 Funnels.stringFunnel(Charset.defaultCharset()),
@@ -65,9 +66,9 @@ public class LocalBloomFilterService implements BloomFilterService{
         try {
             localBloomFilter.put(key);
             pendingSync.offer(key);
-            log.debug(">>>添加数据到本地布隆过滤器: {}", key);
+            log.info(">>>添加数据到本地布隆过滤器: {}", key);
         } catch (Exception e) {
-            log.error(">>>添加数据到本地布隆过滤器失败: {}", key);
+            log.error(">>>添加数据到本地布隆过滤器失败: {}", key, e);
         }
     }
 
@@ -93,7 +94,7 @@ public class LocalBloomFilterService implements BloomFilterService{
             if (batch.length > 0) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.BLOOM_FILTER_KEY, batch);
                 syncCounter.addAndGet(batch.length);
-                log.debug(">>>同步数据到Redis完成: count={}", batch.length);
+                log.info(">>>同步数据到Redis完成: count={}", batch.length);
             }
         } catch (Exception e) {
             log.error(">>>同步数据到Redis失败", e);
@@ -124,22 +125,19 @@ public class LocalBloomFilterService implements BloomFilterService{
             while (cursor.hasNext()) {
                 batch.add(cursor.next());
                 totalCount++;
-
                 if (batch.size() >= fetchSize) {
                     processBatch(batch);
                     totalCount += batch.size();
                     batch.clear();
-
                     Thread.yield();
                 }
             }
             if (CollectionUtil.isNotEmpty(batch)) {
                 processBatch(batch);
-                totalCount += batch.size();
             }
             cursor.close();
         } catch (Exception e) {
-            log.error(">>>分批加载Redis数据失败: key={}", key);
+            log.error(">>>分批加载Redis数据失败: key={}", key, e);
         }
         return totalCount;
     }
@@ -153,7 +151,7 @@ public class LocalBloomFilterService implements BloomFilterService{
      */
     private void processBatch(List<String> batch) {
         batch.forEach(key -> localBloomFilter.put(key));
-        log.debug(">>>处理一批数据：{}条", batch.size());
+        log.info(">>>处理一批数据：{}条", batch.size());
     }
 
     /**
@@ -183,7 +181,7 @@ public class LocalBloomFilterService implements BloomFilterService{
                 cursor.close();
                 log.info(">>>异步同步数据到本地key完成: sourceKey={}, targetKey={}", sourceKey, targetKey);
             } catch (Exception e) {
-                log.error(">>>异步同步数据到本地key异常");
+                log.error(">>>异步同步数据到本地key异常", e);
             }
         });
     }

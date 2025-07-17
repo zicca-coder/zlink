@@ -17,7 +17,12 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
     default-property-inclusion: non_null
-
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 117.72.198.204:8848
+        namespace: bdb6c233-522a-4b8f-94ae-ee1f4984deda
+        register-enabled: true
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

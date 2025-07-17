@@ -24,4 +24,6 @@ public class RedisKeyConstants {
 
     public static final long DEFAULT_CACHE_VALID_TIME = 2626560000L;
 
+    public static final String LINK_LOCK_KEY_PREFIX = "zlink:lock:link_lock:";
+
 }

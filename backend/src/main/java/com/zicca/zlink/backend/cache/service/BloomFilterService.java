@@ -1,6 +1,4 @@
-package com.zicca.zlink.backend.cache;
-
-import java.util.Collection;
+package com.zicca.zlink.backend.cache.service;
 
 public interface BloomFilterService {
 

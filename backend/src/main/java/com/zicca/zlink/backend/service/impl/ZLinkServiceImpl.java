@@ -1,10 +1,13 @@
 package com.zicca.zlink.backend.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.text.StrBuilder;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.zicca.zlink.backend.cache.CacheService;
+import com.zicca.zlink.backend.cache.holder.BloomFilterHolder;
+import com.zicca.zlink.backend.cache.holder.CacheHolder;
+import com.zicca.zlink.backend.common.constant.RedisKeyConstants;
 import com.zicca.zlink.backend.common.enums.CreateTypeEnum;
 import com.zicca.zlink.backend.common.enums.ValidDateTypeEnum;
 import com.zicca.zlink.backend.dao.entity.ZLink;
@@ -22,12 +25,15 @@ import com.zicca.zlink.backend.toolkit.LinkUtil;
 import com.zicca.zlink.framework.execption.ServiceException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +48,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements ZLinkService {
 
-    private final CacheService cacheService;
+    private final CacheHolder cacheHolder;
+    private final BloomFilterHolder bloomFilterHolder;
+    private final RedissonClient redissonClient;
 
 
     @Value("${zlink.domain.default}")
@@ -52,7 +60,8 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
     @Override
     public ZLinkCreateRespDTO createZLink(ZLinkCreateReqDTO requestParam) {
         String suffix = generateSuffix();
-        String shortUrl = StrBuilder.create(defaultDomain).append("/").append(suffix).toString();
+//        String shortUrl = StrBuilder.create(defaultDomain).append("/").append(suffix).toString();
+        String shortUrl = suffix;
         ZLink zLink = ZLink.builder()
                 .domain(defaultDomain)
                 .originUrl(requestParam.getOriginUrl())
@@ -70,9 +79,9 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
             throw new ServiceException("新增短链接失败");
         }
         // 加入缓存 默认刚创建的短链接是即将被访问的
-        cacheService.putToCache(shortUrl, zLink.getOriginUrl(), LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()));
+        cacheHolder.putToCache(shortUrl, zLink.getOriginUrl(), LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()));
         // 加入布隆过滤器
-        cacheService.addToBloomFilter(shortUrl);
+        bloomFilterHolder.add(shortUrl);
         return BeanUtil.copyProperties(zLink, ZLinkCreateRespDTO.class);
     }
 
@@ -101,10 +110,94 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
         return List.of();
     }
 
+    @SneakyThrows
     @Override
-    public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response) {
+    public void restoreUrl(String shortUrl, ServletRequest request, ServletResponse response) {
+        // 查询本地是否缓存空值（避免缓存击穿） 【短链：原始链接】
+        String originUrl = null;
+        // 如果本地缓存空值命中，直接返回404 \ 如果本地缓存命中非空，直接跳转
+        if (StrUtil.isNotBlank(originUrl = cacheHolder.getFromCache(shortUrl))) {
+            if (RedisKeyConstants.LINK_NOT_EXIST_VALUE.equals(originUrl)) {
+                log.info(">>>本地缓存：短链不存在: shortUrl={}", shortUrl);
+                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                return;
+            }
+            // 消息队列异步统计短链访问信息
+            log.info(">>>本地缓存命中短链接：shortUrl={}", shortUrl);
+            ((HttpServletResponse) response).sendRedirect(originUrl);
+            return;
+        }
+        // 如果本地缓存未命中，查询本地布隆过滤器是否存在
+        // 如果不存在，直接返回404
+        if (!bloomFilterHolder.mightContainsInLocal(shortUrl)) {
+            // 如果不存在，直接返回404
+            log.info(">>>本地布隆过滤器不存在: shortUrl={}", shortUrl);
+            ((HttpServletResponse) response).sendRedirect("/page/notfound");
+            return;
+        }
+        // 如果布隆过滤器存在，查询Redis缓存
+        // 查询Redis缓存是否命中 命中空值返回404 \ 命中非空值跳转
+        if (StrUtil.isNotBlank(originUrl = cacheHolder.getFromRedis(shortUrl))) {
+            if (RedisKeyConstants.LINK_NOT_EXIST_VALUE.equals(originUrl)) {
+                log.info(">>>Redis缓存：短链不存在: shortUrl={}", shortUrl);
+                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                return;
+            }
+            // 如果缓存命中非空值，跳转
+            log.info(">>>Redis缓存命中短链接：shortUrl={}", shortUrl);
+            ((HttpServletResponse) response).sendRedirect(originUrl);
+            return;
+        }
+        // 如果缓存未命中，查询Redis布隆过滤器是否存在
+        // 如果不存在，直接返回404
+        // 如果布隆过滤器存在，则查询数据库
+        if (!bloomFilterHolder.mightContainsInRedis(shortUrl)) {
+            // 如果不存在，直接返回404
+            log.info(">>>Redis布隆过滤器不存在: shortUrl={}", shortUrl);
+            ((HttpServletResponse) response).sendRedirect("/page/notfound");
+            return;
+        }
+        // 如果数据库命中，则加入缓存，跳转
+        // 如果数据库未命中，则返回404，本地缓存空值，Redis缓存空值，缓存时间设置3-5分钟
+        RLock lock = redissonClient.getLock(shortUrl);
+        lock.lock();
+        try {
+            // 双重判断是否有其他线程已经重建缓存
+            // 如果本地缓存空值命中，直接返回404 \ 如果本地缓存命中非空，直接跳转
+            if (StrUtil.isNotBlank(originUrl = cacheHolder.getFromLocal(shortUrl))) {
+                if (RedisKeyConstants.LINK_NOT_EXIST_VALUE.equals(originUrl)) {
+                    ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                    return;
+                }
+                ((HttpServletResponse) response).sendRedirect(originUrl);
+                return;
+            }
+            // 查询Redis缓存是否命中 命中空值返回404 \ 命中非空值跳转
+            if (StrUtil.isNotBlank(originUrl = cacheHolder.getFromRedis(shortUrl))) {
+                if (RedisKeyConstants.LINK_NOT_EXIST_VALUE.equals(originUrl)) {
+                    ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                    return;
+                }
+                // 如果缓存命中非空值，跳转
+                ((HttpServletResponse) response).sendRedirect(originUrl);
+                return;
+            }
 
+            // 查询数据库
+            ZLink link = lambdaQuery().eq(ZLink::getShortUrl, shortUrl).one();
+            if (ObjectUtil.isNull(link)) {
+                cacheHolder.putNullToCache(shortUrl); // 空值过期时间 3分钟
+                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                return;
+            }
+            // 重建缓存
+            cacheHolder.putToCache(shortUrl, link.getOriginUrl(), true);
+            ((HttpServletResponse) response).sendRedirect(originUrl);
+        } finally {
+            lock.unlock();
+        }
     }
+
 
     @Override
     public void zLinkStats(ZLinkStatsRecordDTO requestParam) {

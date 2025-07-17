@@ -10,15 +10,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(description = "短链接管理", name = "短链接接口管理")
 @RestController
-@RequestMapping("/api/short-link/v1")
+@RequestMapping("/api/short-link/backend/v1")
 @RequiredArgsConstructor
 public class ZLinkController {
 
@@ -37,6 +36,17 @@ public class ZLinkController {
     )
     public Result<ZLinkCreateRespDTO> create(@RequestBody ZLinkCreateReqDTO reqDTO) {
         return Results.success(zLinkService.createZLink(reqDTO));
+    }
+
+
+    @GetMapping("/{short-url}")
+    @Operation(summary = "访问短链接", description = "访问短链接")
+    @ApiResponse(
+            responseCode = "200",
+            description = "访问成功"
+    )
+    public void restoreUrl(@PathVariable("short-url") String shortUrl, ServletRequest request, ServletResponse  response) {
+        zLinkService.restoreUrl(shortUrl, request, response);
     }
 
 

@@ -1,4 +1,4 @@
-package com.zicca.zlink.backend.cache;
+package com.zicca.zlink.backend.cache.service;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.zicca.zlink.backend.common.constant.RedisKeyConstants;
@@ -55,7 +55,7 @@ public class RedisBloomFilterService implements BloomFilterService {
         try {
             return bloomFilter.contains(key);
         } catch (Exception e) {
-            log.error(">>>Redis布隆过滤器查询失败: key={}", key);
+            log.error(">>>Redis布隆过滤器查询失败: key={}", key, e);
             // 若查询失败，则返回true，交由后续缓存判断是否存在
             return true;
         }
@@ -68,7 +68,7 @@ public class RedisBloomFilterService implements BloomFilterService {
             // 同步添加到Redis set中，用于与本地布隆过滤器同步
             // todo: 大key问题
             redisTemplate.opsForSet().add(RedisKeyConstants.BLOOM_FILTER_KEY, key);
-            log.debug(">>>Redis布隆过滤器添加成功: key={}", key);
+            log.info(">>>Redis布隆过滤器添加成功: key={}", key);
         } catch (Exception e) {
             log.error(">>>Redis布隆过滤器添加失败: key={}, error={}", key, e.getMessage());
         }
@@ -89,7 +89,7 @@ public class RedisBloomFilterService implements BloomFilterService {
                 if (CollectionUtil.isNotEmpty(keys)) {
                     redisTemplate.opsForSet().add(RedisKeyConstants.BLOOM_FILTER_KEY, keys.toArray(new String[0]));
                 }
-                log.debug(">>>Redis布隆过滤器批量添加成功: counts={}", keys.size());
+                log.info(">>>Redis布隆过滤器批量添加成功: counts={}", keys.size());
             } catch (Exception e) {
                 log.error(">>>Redis布隆过滤器批量添加失败: keys={}, error={}", keys, e.getMessage());
             }

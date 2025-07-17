@@ -1,0 +1,46 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.0.4 Chrome/138.0.7204.97 Electron/37.2.1 Safari/537.36" version="28.0.4">
+  <diagram name="第 1 页" id="mXXJtRQOIAk-y63agnJB">
+    <mxGraphModel dx="1701" dy="996" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2339" pageHeight="3300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-12" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="120" y="80" width="230" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-10" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry width="230" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="KLF6bR-u0PDEBaUB7QFk-12" source="KLF6bR-u0PDEBaUB7QFk-1" target="KLF6bR-u0PDEBaUB7QFk-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-1" value="创建短链接" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="55" y="50" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="KLF6bR-u0PDEBaUB7QFk-12" source="KLF6bR-u0PDEBaUB7QFk-2" target="KLF6bR-u0PDEBaUB7QFk-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-2" value="加入本地缓存" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="55" y="150" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="KLF6bR-u0PDEBaUB7QFk-12" source="KLF6bR-u0PDEBaUB7QFk-4" target="KLF6bR-u0PDEBaUB7QFk-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-4" value="加入Redis缓存" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="55" y="250" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="KLF6bR-u0PDEBaUB7QFk-12" source="KLF6bR-u0PDEBaUB7QFk-6" target="KLF6bR-u0PDEBaUB7QFk-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-6" value="加入本地布隆过滤器" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="55" y="350" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-8" value="加入Redisson布隆过滤器" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="55" y="450" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="KLF6bR-u0PDEBaUB7QFk-11" value="短链接创建流程" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="KLF6bR-u0PDEBaUB7QFk-12">
+          <mxGeometry x="65" y="10" width="100" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

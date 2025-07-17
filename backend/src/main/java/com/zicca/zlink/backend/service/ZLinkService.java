@@ -10,7 +10,6 @@ import com.zicca.zlink.backend.dto.req.ZLinkPageReqDTO;
 import com.zicca.zlink.backend.dto.req.ZLinkUpdateReqDTO;
 import com.zicca.zlink.backend.dto.resp.ZLinkCreateRespDTO;
 import com.zicca.zlink.backend.dto.resp.ZLinkGroupCountQueryRespDTO;
-import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 
@@ -69,11 +68,11 @@ public interface ZLinkService extends IService<ZLink> {
     /**
      * 短链接跳转
      *
-     * @param shortUri 短链接后缀
+     * @param shortUrl 短链接后缀
      * @param request  请求
      * @param response 响应
      */
-    void restoreUrl(String shortUri, ServletRequest request, ServletResponse response);
+    void restoreUrl(String shortUrl, ServletRequest request, ServletResponse response);
 
 
     void zLinkStats(ZLinkStatsRecordDTO requestParam);
