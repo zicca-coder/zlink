@@ -35,9 +35,20 @@ public class HashUtil {
     public static String hashToBase62(String str) {
         // 对输入字符串进行哈希计算，返回一个 32 位整数
         // todo: 可扩展 hash64 和 hash128
-        int i = MurmurHash.hash32(str);
+        int hash = MurmurHash.hash32(str);
         // 将可能为负数的哈希值转为正数
-        long num = i < 0 ? Integer.MAX_VALUE - (long) i : i;
+        long num = hash < 0 ? Integer.MAX_VALUE - (long) hash : hash;
         return convertDecToBase62(num);
     }
+
+    public static String hash64ToBase62(String str) {
+        long hash = MurmurHash.hash64(str);
+        return convertDecToBase62(hash);
+    }
+
+    public static String hash128ToBase62(String str) {
+        long[] hash = MurmurHash.hash128(str);
+        return convertDecToBase62(hash[0]) + convertDecToBase62(hash[1]);
+    }
+
 }

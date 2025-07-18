@@ -10,6 +10,7 @@ import com.zicca.zlink.backend.cache.holder.CacheHolder;
 import com.zicca.zlink.backend.common.constant.RedisKeyConstants;
 import com.zicca.zlink.backend.common.enums.CreateTypeEnum;
 import com.zicca.zlink.backend.common.enums.ValidDateTypeEnum;
+import com.zicca.zlink.backend.config.ShortUrlConfig;
 import com.zicca.zlink.backend.dao.entity.ZLink;
 import com.zicca.zlink.backend.dao.mapper.ZLinkMapper;
 import com.zicca.zlink.backend.dto.biz.ZLinkStatsRecordDTO;
@@ -19,9 +20,11 @@ import com.zicca.zlink.backend.dto.req.ZLinkPageReqDTO;
 import com.zicca.zlink.backend.dto.req.ZLinkUpdateReqDTO;
 import com.zicca.zlink.backend.dto.resp.ZLinkCreateRespDTO;
 import com.zicca.zlink.backend.dto.resp.ZLinkGroupCountQueryRespDTO;
+import com.zicca.zlink.backend.pool.ShortUrlPoolManager;
+import com.zicca.zlink.backend.service.ShortUrlGeneratorService;
 import com.zicca.zlink.backend.service.ZLinkService;
-import com.zicca.zlink.backend.toolkit.HashUtil;
 import com.zicca.zlink.backend.toolkit.LinkUtil;
+import com.zicca.zlink.framework.aop.TimeCost;
 import com.zicca.zlink.framework.execption.ServiceException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -41,7 +44,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j(topic = "ZLinkServiceImpl")
 @Service
@@ -51,21 +53,43 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
     private final CacheHolder cacheHolder;
     private final BloomFilterHolder bloomFilterHolder;
     private final RedissonClient redissonClient;
-
+    private final ShortUrlGeneratorService shortUrlGeneratorService;
+    private final ShortUrlPoolManager poolManager;
+    private final ShortUrlConfig shortUrlConfig;
 
     @Value("${zlink.domain.default}")
     private String defaultDomain;
 
+    @TimeCost
     @Transactional(rollbackFor = Exception.class)
     @Override
     public ZLinkCreateRespDTO createZLink(ZLinkCreateReqDTO requestParam) {
-        String suffix = generateSuffix();
-//        String shortUrl = StrBuilder.create(defaultDomain).append("/").append(suffix).toString();
-        String shortUrl = suffix;
+        String shortUrl;
+        
+        // 策略选择：优先从预生成池获取，失败时使用实时生成
+        if (shortUrlConfig.getPreGenerate().getEnabled()) {
+            shortUrl = poolManager.acquireShortUrl();
+            if (shortUrl == null) {
+                log.warn("预生成池为空，使用实时生成策略");
+                shortUrl = shortUrlGeneratorService.generateUniqueShortUrl(
+                    requestParam.getOriginUrl(), 
+                    requestParam.getGid()
+                );
+            } else {
+                log.info("从预生成池获取短链接: {}", shortUrl);
+            }
+        } else {
+            // 预生成池未启用，使用实时生成
+            shortUrl = shortUrlGeneratorService.generateUniqueShortUrl(
+                requestParam.getOriginUrl(), 
+                requestParam.getGid()
+            );
+        }
+        
         ZLink zLink = ZLink.builder()
                 .domain(defaultDomain)
                 .originUrl(requestParam.getOriginUrl())
-                .shortUri(suffix)
+                .shortUri(shortUrl)
                 .shortUrl(shortUrl)
                 .gid(requestParam.getGid())
                 .createType(CreateTypeEnum.formCode(requestParam.getCreateType()))
@@ -74,14 +98,20 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
                 .describe(requestParam.getDescribe())
                 .favicon(getFavicon(requestParam.getOriginUrl()))
                 .build();
+                
         boolean saved = save(zLink);
         if (!saved) {
             throw new ServiceException("新增短链接失败");
         }
+        
         // 加入缓存 默认刚创建的短链接是即将被访问的
-        cacheHolder.putToCache(shortUrl, zLink.getOriginUrl(), LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()));
+        cacheHolder.putToCache(shortUrl, zLink.getOriginUrl(), 
+            LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()));
+        
         // 加入布隆过滤器
         bloomFilterHolder.add(shortUrl);
+        
+        log.info("创建短链接成功: {} -> {}", shortUrl, requestParam.getOriginUrl());
         return BeanUtil.copyProperties(zLink, ZLinkCreateRespDTO.class);
     }
 
@@ -205,11 +235,7 @@ public class ZLinkServiceImpl extends ServiceImpl<ZLinkMapper, ZLink> implements
     }
 
 
-    private String generateSuffix() {
-        // todo: 改进
-        String shortUri = HashUtil.hashToBase62(UUID.randomUUID().toString());
-        return shortUri;
-    }
+
 
     @SneakyThrows
     private String getFavicon(String url) {

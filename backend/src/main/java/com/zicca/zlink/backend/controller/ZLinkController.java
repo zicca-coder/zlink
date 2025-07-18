@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(description = "短链接管理", name = "短链接接口管理")
 @RestController
-@RequestMapping("/api/short-link/backend/v1")
+@RequestMapping("backend/api/v1/shorturl/")
 @RequiredArgsConstructor
 public class ZLinkController {
 

@@ -45,6 +45,20 @@ knife4j:
     enable: false
 
 zlink:
+  link:
+    hashType: 32 # 默认采用32位哈希生成短链 (32/64/128)
+    maxRetryTimes: 10 # 最大重试次数
+    baseLength: 6 # 基础短链长度
+    maxLength: 12 # 最大短链长度
+    # 预生成池配置
+    preGenerate:
+      enabled: false # 是否启用预生成池
+      localPoolSize: 1000 # 本地池大小
+      redisPoolSize: 10000 # Redis池大小
+      minThreshold: 100 # 最小阈值，低于此值触发补充
+      batchSize: 500 # 每次批量生成数量
+      generateInterval: 30 # 生成间隔（秒）
+      maxGenerateTime: 5000 # 单次生成最大耗时（毫秒）
   domain:
     default: zlink.ink:${server.port}
   redis:
@@ -57,6 +71,14 @@ zlink:
     loadTimeout: 300 # 加载超时时间（秒）
     asyncLoad: true # 是否异步加载
     memoryThreshold: 0.8 # 内存使用阈值
+    # 布隆过滤器重建配置
+    rebuild:
+      enabled: true # 是否启用自动重建
+      checkInterval: 86400 # 检查间隔（秒），默认24小时
+      collisionThreshold: 0.05 # 冲突率阈值，超过5%触发重建
+      maxRebuildTime: 3600 # 最大重建时间（秒）
+      backupEnabled: true # 是否启用备份
+      rebuildCron: "0 0 2 * * ?" # 定时重建cron表达式，每天凌晨2点
     executor:
       corePoolSize: 4
       maxPoolSize: 8
